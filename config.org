@@ -1,0 +1,895 @@
+#+AUTHOR: Trevor Riles
+#+TITLE: GNU Emacs Configuration
+
+* Emacs Initialization
+
+** Packages Sources
+
+In order to install packages, it is useful to configure package sources.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq package-archives '(("gnu" . "http://elpa.gnu.org/packages/")
+                           ("melpa" . "http://melpa.org/packages/")
+                           ("org" . "http://orgmode.org/elpa/")))
+#+END_SRC
+
+** use-package
+
+To be able to manage its configuration with =use-package= it is necessary to
+first install it, if you don't already.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (unless (package-installed-p 'use-package)
+    (package-refresh-contents)
+    (package-install 'use-package))
+
+  (use-package delight :ensure t)
+  (use-package diminish :ensure t)
+  (use-package use-package-ensure-system-package :ensure t)
+#+END_SRC
+
+* Start Up
+
+** Better Defaults
+
+For a better user experience of GNU Emacs, here are the default values I use.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq
+   ad-redefinition-action 'accept                   ; Silence warnings for redefinition
+   cursor-in-non-selected-windows t                 ; Hide the cursor in inactive windows
+   display-time-default-load-average nil            ; Don't display load average
+   fill-column 80                                   ; Set width for automatic line breaks
+   help-window-select t                             ; Focus new help windows when opened
+   inhibit-startup-screen t                         ; Disable start-up screen
+   initial-scratch-message ""                       ; Empty the initial *scratch* buffer
+   load-prefer-newer t                              ; Prefers the newest version of a file
+   scroll-conservatively most-positive-fixnum       ; Always scroll by one line
+   select-enable-clipboard t                        ; Merge system's and Emacs' clipboard
+   tab-width 4                                      ; Set width for tabs
+   use-package-always-ensure t                      ; Avoid the :ensure keyword for each package
+   user-full-name "Trevor Riles"                    ; Set the full name of the current user
+   user-mail-address "trevor@trevorriles.com"       ; Set the email address of the current user
+   vc-follow-symlinks t                             ; Always follow the symlinks
+   view-read-only t)                                ; Always open read-only buffers in view-mode
+  (cd "~/")                                         ; Move to the user directory
+  (column-number-mode 1)                            ; Show the column number
+  (display-time-mode 1)                             ; Enable time in the mode-line
+  (fset 'yes-or-no-p 'y-or-n-p)                     ; Replace yes/no prompts with y/n
+  (global-hl-line-mode)                             ; Hightlight current line
+  (show-paren-mode 1)                               ; Show the parent
+#+END_SRC
+
+** OSX
+Fix modifier keys
+#+BEGIN_SRc emacs-lisp :tangle yes
+(setq mac-option-modifier 'meta)
+#+END_SRC
+** Customization
+
+To avoid overloading the GNU Emacs custormization =init.el= file made by the
+user with the UI, I add the generated code in a separate file.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (setq-default custom-file (expand-file-name "custom.el" user-emacs-directory))
+  (when (file-exists-p custom-file)
+    (load custom-file t))
+#+END_SRC
+
+** Theme
+
+I like the light on dark because I find it to be more restful.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package nord-theme
+    :config
+    (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
+    (load-theme 'nord t))
+
+  (use-package smart-mode-line
+    :defer 0.1
+    :custom (sml/theme 'respectful)
+    :config (sml/setup))
+#+END_SRC
+
+** Turn off mouse interface
+
+Since I never use the mouse with GNU Emacs, I prefer not to use certain
+graphical elements as seen as the menu bar, toolbar, scrollbar and tooltip that
+I find invasive.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (when window-system
+    (menu-bar-mode -1)                              ; Disable the menu bar
+    (scroll-bar-mode -1)                            ; Disable the scroll bar
+    (tool-bar-mode -1)                              ; Disable the tool bar
+    (tooltip-mode -1))                              ; Disable the tooltips
+#+END_SRC
+
+** Evil Mode
+
+I use evil mode because I am a fan of vim keybindings
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+  (use-package evil
+  :ensure t
+  :init
+  (setq evil-search-module 'evil-search)
+  (setq evil-ex-complete-emacs-commands nil)
+  (setq evil-vsplit-window-right t)
+  (setq evil-split-window-below t)
+  (setq evil-shift-round nil)
+  (setq evil-want-C-u-scroll t)
+  :config
+  (evil-mode)
+
+  ;; example key binding
+  (define-key evil-normal-state-map (kbd ", w") 'evil-window-vsplit))
+#+END_SRC
+* Languages
+** YAML
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package yaml-mode
+:delight yaml-mode "ψ"
+:mode "\\.yml\\'"
+:interpreter ("yml" . yml-mode))
+
+#+END_SRC
+* Advanced Configuration
+** Auto-Completion
+=company= provides auto-completion at point and displays a small pop-in containing the candidates.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package company
+  :defer 2
+  :diminish
+  :custom
+  (company-begin-commands '(self-insert-command))
+  (company-idle-delay .1)
+  (company-minimum-prefix-length 2)
+  (company-show-numbers t)
+  (company-tooltip-align-annotations t)
+  (global-company-mode t))
+#+END_SRC
+
+=company-box= provides better visuals for =company-mode= including icons.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package company-box
+  :after company
+  :diminish
+  :hook (company-mode . company-box-mode))
+#+END_SRC
+
+** Browser
+*** =engine-mode=
+
+I use it to do most websearches without leaving emacs.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package engine-mode
+  :defer 3
+  :config
+  (defengine duckduckgo
+    "https://duckduckgo.com/?q=%s"
+    :keybinding "d")
+  (defengine duckduckgo
+    "https://github.com.com/search?ref=simplesearch&q=%s"
+    :keybinding "g")
+  (engine-mode t))
+#+END_SRC
+** Buffers
+Make finding buffers easy.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package ibuffer
+  :defer 0.2
+  :bind ("C-x C-b" . ibuffer))
+
+(use-package ibuffer-projectile
+  :after ibuffer
+  :preface
+  (defun my/ibuffer-projectile ()
+    (ibuffer-projectile-set-filter-groups)
+    (unless (eq ibuffer-sorting-mode 'alphabetic)
+      (ibuffer-do-sort-by-alphabetic)))
+  :hook (ibuffer . my/ibuffer-projectile))
+#+END_SRC
+** Windows
+*** =switch-window=
+Antoher option is =ace-window=.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package switch-window
+  :defer 0.2
+  :bind (("C-x o" . switch-window)
+         ("C-x w" . switch-window-then-swap-buffer)))
+#+END_SRC
+*** =windmove=
+Allows moving windows
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package windmove
+  :defer 0.2
+  :bind (("C-c h" . windmove-left)
+         ("C-c j" . windmove-down)
+         ("C-c k" . windmove-up)
+         ("C-c l" . windmove-right)))
+#+END_SRC
+** Dired
+Make finding files easier.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package dired
+  :ensure nil
+  :delight dired-mode "Dired"
+  :custom
+  (dired-auto-rever-buffer t)
+  (dired-dwim-target t)
+  (dired-hide-details-hide-symlink-targets nil)
+  (dired-listing-switches "-alh")
+  (dired-ls-F-marks-symlinks nil)
+  (dired-recursive-copies 'always))
+
+(use-package dired-x
+  :ensure nil
+  :preface
+  (defun my/dired-revert-after-cmd (command &optional output error)
+    (revert-buffer))
+  :config (advice-add 'dired-smart-shell-command :after #'my/dired-revert-after-cmd))
+#+END_SRC
+** Ending Up
+I’m using an .org file to maintain my GNU Emacs configuration. However, at his launch, it will loads the config.el source file for a faster loading.
+
+The code below, executes org-babel-tangle asynchronously when config.org is saved.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package async)
+
+(defvar *config-file* (expand-file-name "config.org" user-emacs-directory)
+  "The configuration file.")
+
+(defvar *config-last-change* (nth 5 (file-attributes *config-file*))
+  "Last modification time of the configuration file.")
+
+(defvar *show-async-tangle-results* nil
+  "Keeps *emacs* async buffers around for later inspection.")
+
+(defun my/config-updated ()
+  "Checks if the configuration file has been updated since the last time."
+  (time-less-p *config-last-change*
+               (nth 5 (file-attributes *config-file*))))
+
+(defun my/config-tangle ()
+  "Tangles the org file asynchronously."
+  (when (my/config-updated)
+    (setq *config-last-change*
+          (nth 5 (file-attributes *config-file*)))
+    (my/async-babel-tangle *config-file*)))
+
+(defun my/async-babel-tangle (org-file)
+  "Tangles the org file asynchronously."
+  (let ((init-tangle-start-time (current-time))
+        (file (buffer-file-name))
+        (async-quiet-switch "-q"))
+    (async-start
+     `(lambda ()
+        (require 'org)
+        (org-babel-tangle-file ,org-file))
+     (unless *show-async-tangle-results*
+       `(lambda (result)
+          (if result
+              (message "SUCCESS: %s successfully tangled (%.2fs)."
+                       ,org-file
+                       (float-time (time-subtract (current-time)
+                                                  ',init-tangle-start-time)))
+            (message "ERROR: %s as tangle failed." ,org-file)))))))
+#+END_SRC
+** History
+Command history is handy
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package savehist
+  :ensure nil
+  :custom
+  (history-delete-duplicates t)
+  (history-length t)
+  (savehist-additional-variables
+   '(kill-ring
+     search-ring
+     regexp-search-ring))
+  (savehist-file (expand-file-name "history" user-emacs-directory))
+  (savehist-save-minibuffer-history 1)
+  :config (savehist-mode 1))
+#+END_SRC
+** General
+*** =agressive-indent=
+Auto indent as you write
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package aggressive-indent
+  :defer 2
+  :hook ((css-mode . aggressive-indent-mode)
+         (emacs-lisp-mode . aggressive-indent-mode)
+         (js-mode . aggressive-indent-mode)
+         (lisp-mode . aggressive-indent-mode))
+  :custom (aggressive-indent-comments-too))
+#+END_SRC
+*** =paradox=
+Improved Emacs standard package menu
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package paradox
+  :defer 1
+  :custom
+  (paradox-column-width-package 27)
+  (paradox-column-width-version 13)
+  (paradox-execute-asynchronously t)
+  (paradox-hide-wiki-packages t)
+  :config
+  (paradox-enable)
+  (remove-hook 'paradox-after-execute-functions #'paradox--report-buffer-print))
+#+END_SRC
+*** =rainbow-mode=
+Colors test with their value
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package rainbow-mode
+  :defer 2
+  :hook (prog-mode))
+#+END_SRC
+*** =undo-tree=
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package undo-tree
+  :diminish
+  :bind ("C--" . undo-tree-redo)
+  :init (global-undo-tree-mode)
+  :custom
+  (undo-tree-visualizer-timestamps t)
+  (undo-tree-visualizer-diff t))
+#+END_SRC
+*** =which-key=
+Helps find keyboard shortcuts
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package which-key
+  :defer 0.2
+  :diminish
+  :config (which-key-mode))
+#+END_SRC
+** Ivy
+=ivy= is faster and lighter than =helm=
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package counsel
+  :after ivy
+  :diminish
+  :config (counsel-mode))
+
+(use-package ivy
+  :defer 0.1
+  :diminish
+  :bind (("C-c C-r" . ivy-resume)
+         ("C-x B" . ivy-switch-buffer-other-window))
+  :custom
+  (ivy-count-format "(%d/%d) ")
+  (ivy-use-virtual-buffers t)
+  :config (ivy-mode))
+
+(use-package counsel-projectile
+:ensure t
+:after (counsel projectile)
+:init
+(counsel-projectile-mode))
+
+(use-package ivy-pass
+  :after ivy
+  :commands ivy-pass)
+
+(use-package ivy-rich
+  :after ivy
+  :custom
+  (ivy-virtual-abbreviate 'full
+                          ivy-rich-switch-buffer-align-virtual-buffer t
+                          ivy-rich-path-style 'bbrev)
+  :config
+  (ivy-set-display-transformer 'ivy-switch-buffer
+                               'ivy-rich-switch-buffer-transformer))
+(use-package swiper
+  :after ivy
+  :bind (("C-s" . swiper)
+         ("C-r" . swiper)))
+
+#+END_SRC
+** Parenthesis
+*** =rainbow-delimiters=
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package rainbow-delimiters
+:defer 1
+:hook (prog-mode . rainbow-delimiters-mode))
+#+END_SRC
+*** =smartparens=
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package smartparens
+:defer 1
+:diminish
+:config (smartparens-global-mode 1))
+#+END_SRC
+** Recent Files
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package recentf
+  :defer 2
+  :bind ("C-c r" . recentf-open-files)
+  :init (recentf-mode)
+  :custom
+  (recentf-max-menu-items 15)
+  (recentf-max-saved-items 200)
+  (recentf-exclude (list "COMMIT_EDITMSG"
+                         "~$"
+                         "/scp:"
+                         "/ssh:"
+                         "/sudo:"
+                         "/tmp/"))
+  :config (run-at-time nil (* 5 60) 'recentf-save-list))
+#+END_SRC
+** Projectile
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package projectile
+  :defer 1
+  :custom
+  (projectile-cache-file (expand-file-name ".projectile-cache" user-emacs-directory))
+  (projectile-completion-system 'ivy)
+  (projectile-enable-caching t)
+  (projectile-known-projects-file (expand-file-name
+                                 ".projectile-bookmarks" user-emacs-directory))
+  (projectile-mode-line '(:eval (projectile-project-name)))
+  :config
+  (projectile-global-mode))
+#+END_SRC
+
+** Hydra
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package hydra
+  :defer 0.5
+  :bind (("C-c P" . hydra-projectile/body)
+         ("C-c b" . hydra-buffer/body)
+         ("C-c m" . hydra-magit/body)
+         ("C-c o" . hydra-org/body)
+         ("C-c g" . hydra-go-to-file/body)
+         ("C-c w" . hydra-windows/body)))
+#+END_SRC
+*** Hydra/Go To
+Group jump-to-file commands
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defhydra hydra-go-to-file (:color blue)
+  "
+    ^
+    ^Go To^           ^Config^            ^Agenda             ^Other^
+    ^─────^───────────^──────^────────────^──────^────────────^─────^────────
+    _q_ quit          _ce_ emacs          _ac_ contacts       _ob_ book
+    ^^                ^^                  _ao_ organizer      _ol_ learning
+    ^^                ^^                  _ap_ people         ^^
+    ^^                ^^                  _aw_ work           ^^
+    ^^                ^^                  ^^                  ^^
+    ^^                ^^                  ^^
+    ^^                ^^                  ^^
+    ^^                ^^                  ^^
+    ^^                ^^                  ^^
+    "
+  ("q" nil)
+  ("ac" (find-file "~/.personal/agenda/contacts.org"))
+  ("ao" (find-file "~/.personal/agenda/organizer.org"))
+  ("ap" (find-file "~/.personal/agenda/people.org"))
+  ("aw" (find-file "~/.personal/agenda/work.org"))
+  ("ce" (find-file "~/.emacs.d/config.org"))
+  ("ob" (find-file "~/.personal/other/books.org"))
+  ("ol" (find-file "~/.personal/other/learning.org")))
+#+END_SRC
+*** Hydra/Buffer
+Group buffer commands
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defhydra hydra-buffer (:color blue)
+  "
+  ^
+  ^Buffer^             ^Do^
+  ^──────^─────────────^──^──────────
+  _q_ quit             _k_ kill
+  ^^                   _l_ list
+  ^^                   _n_ next
+  ^^                   _p_ previous
+  ^^                   ^^
+  "
+  ("q" nil)
+  ("k" kill-buffer)
+  ("l" ibuffer)
+  ("n" next-buffer)
+  ("p" previous-buffer))
+#+END_SRC
+*** Hydra/Magit
+Group Magit Commands
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defhydra hydra-magit (:color blue)
+  "
+  ^
+  ^Magit^             ^Do^
+  ^─────^─────────────^──^────────
+  _q_ quit            _b_ blame
+  ^^                  _c_ clone
+  ^^                  _i_ init
+  ^^                  _s_ status
+  ^^                  ^^
+  "
+  ("q" nil)
+  ("b" magit-blame)
+  ("c" magit-clone)
+  ("i" magit-init)
+  ("s" magit-status))
+#+END_SRC
+*** Hydra/Org
+Group Org commands
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defhydra hydra-org (:color blue)
+  "
+  ^
+  ^Org^             ^Do^
+  ^───^─────────────^──^─────────────
+  _q_ quit          _A_ archive
+  ^^                _a_ agenda
+  ^^                _c_ capture
+  ^^                _d_ decrypt
+  ^^                _i_ insert-link
+  ^^                _j_ jump-task
+  ^^                _k_ cut-subtree
+  ^^                _o_ open-link
+  ^^                _r_ refile
+  ^^                _s_ store-link
+  ^^                _t_ todo-tree
+  ^^                ^^
+  "
+  ("q" nil)
+  ("A" my/org-archive-done-tasks)
+  ("a" org-agenda)
+  ("c" org-capture)
+  ("d" org-decrypt-entry)
+  ("k" org-cut-subtree)
+  ("i" org-insert-link-global)
+  ("j" my/org-jump)
+  ("o" org-open-at-point-global)
+  ("r" org-refile)
+  ("s" org-store-link)
+  ("t" org-show-todo-tree))
+#+END_SRC
+*** Hydra/Projectile
+Group Projectile commands.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defhydra hydra-projectile (:color blue)
+  "
+  ^
+  ^Projectile^        ^Buffers^           ^Find^              ^Search^
+  ^──────────^────────^───────^───────────^────^──────────────^──────^────────────
+  _q_ quit            _b_ list            _d_ directory       _r_ replace
+  _i_ reset cache     _K_ kill all        _D_ root            _R_ regexp replace
+  ^^                  _S_ save all        _f_ file            _s_ ag
+  ^^                  ^^                  _p_ project         ^^
+  ^^                  ^^                  ^^                  ^^
+  "
+  ("q" nil)
+  ("b" counsel-projectile-switch-to-buffer)
+  ("d" counsel-projectile-find-dir)
+  ("D" projectile-dired)
+  ("f" counsel-projectile-find-file)
+  ("i" projectile-invalidate-cache :color red)
+  ("K" projectile-kill-buffers)
+  ("p" counsel-projectile-switch-project)
+  ("r" projectile-replace)
+  ("R" projectile-replace-regexp)
+  ("s" counsel-projectile-ag)
+  ("S" projectile-save-project-buffers))
+#+END_SRC
+*** Hydra/Windows
+Group window commands
+#+BEGIN_SRC emacs-lisp :tangle yes
+(defhydra hydra-windows (:color pink)
+  "
+  ^
+  ^Windows^           ^Window^            ^Zoom^
+  ^───────^───────────^──────^────────────^────^──────
+  _q_ quit            _b_ balance         _-_ out
+  ^^                  _i_ heighten        _+_ in
+  ^^                  _j_ narrow          _=_ reset
+  ^^                  _k_ lower           ^^
+  ^^                  _l_ widen           ^^
+  ^^                  _s_ swap            ^^
+  ^^                  ^^                  ^^
+  "
+  ("q" nil)
+  ("b" balance-windows)
+  ("i" enlarge-window)
+  ("j" shrink-window-horizontally)
+  ("k" shrink-window)
+  ("l" enlarge-window-horizontally)
+  ("s" switch-window-then-swap-buffer :color blue)
+  ("-" text-scale-decrease)
+  ("+" text-scale-increase)
+  ("=" (text-scale-increase 0)))
+#+END_SRC
+** Version Control
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package git-commit
+  :after magit
+  :hook (git-commit-mode . my/git-commit-auto-fill-everywhere)
+  :custom (git-commit-summary-max-length 50)
+  :preface
+  (defun my/git-commit-auto-fill-everywhere ()
+    "Ensures that the commit body does not exceed 72 characters."
+    (setq fill-column 72)
+    (setq-local comment-auto-fill-only-comments nil)))
+
+(use-package magit :defer 0.3)
+#+END_SRC
+
+Also use git gutter to see which lines are being modified.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package git-gutter
+  :defer 0.3
+  :diminish
+  :init (global-git-gutter-mode +1))
+#+END_SRC
+Timemachine lets you scroll through history
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package git-timemachine :defer 1 :diminish)
+#+END_SRC
+** Clean Whitespace
+#+BEGIN_SRC emacs-lisp :tangle yes
+(add-hook 'before-save-hook 'delete-trailing-whitespace)
+#+END_SRC
+** Wordwrap
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package simple
+  :ensure nil
+  :diminish (auto-fill-function)
+  :bind ("C-x p" . pop-to-mark-command)
+  :hook ((prog-mode . turn-on-auto-fill)
+         (text-mode . turn-on-auto-fill))
+  :custom (set-mark-command-repeat-pop t))
+#+END_SRC
+* Org-Mode
+
+Org mode allows me to track time, take notes, and much much more.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org
+  :ensure org-plus-contrib
+  :delight org-mode "Ø"
+  :preface
+  (defun my/org-archive-done-tasks ()
+    "Archive finished or cancelled tasks."
+    (interactive)
+    (org-map-entries
+     (lambda ()
+       (org-archive-subtree)
+       (setq org-map-continue-from (outline-previous-heading)))
+     "TODO=\"DONE\"|TODO=\"CANCELLED\"" (if (org-before-first-heading-p) 'file 'tree)))
+
+  (defun my/org-jump ()
+    "Jumps to a specific task."
+    (interactive)
+    (let ((current-prefix-arg '(4)))
+      (call-interactively 'org-refile)))
+  :hook ((after-save . my/config-tangle)
+         (org-mode . org-indent-mode))
+  :custom
+  (org-blank-before-new-entry nil)
+  (org-cycle-include-plain-lists 'integrate)
+  (org-expiry-inactive-timestamps t)
+  (org-export-backends '(ascii beamer html icalendar latex man md org texinfo))
+  (org-log-done 'time)
+  (org-log-into-drawer "LOGBOOK")
+  (org-modules '(org-crypt
+                 org-habit
+                 org-info
+                 org-irc
+                 org-mouse
+                 org-protocol))
+  (org-refile-allow-creating-parent-nodes 'confirm)
+  (org-refile-use-cache nil)
+  (org-refile-use-outline-path nil)
+  (org-refile-targets '((org-agenda-files . (:maxlevel .6))))
+  (org-startup-folded nil)
+  (org-startup-with-inline-images t)
+  (org-tag-alist '(("@coding" . ?c)
+                   ("@computer" . ?l)
+                   ("@errands" . ?e)
+                   ("@home" . ?h)
+                   ("@phone" . ?p)
+                   ("@reading" . ?r)
+                   ("@work" . ?b)
+                   ("@writing" . ?w)
+                   ("crypt" . ?C)
+                   ("fuzzy" . ?0)
+                   ("highenergy" . ?1)))
+  (org-tags-exclude-from-inheritance '("crypt" "project"))
+  (org-todo-keywords '((sequence "TODO(t)"
+                                 "STARTED(s)"
+                                 "WAITING(w@/!)"
+                                 "SOMEDAY(.)" "|" "DONE(x!)" "CANCELLED(c@)")))
+  (org-use-effective-time t)
+  (org-yank-adjusted-subtrees t)
+  :config
+  (add-to-list 'org-global-properties '("Effort_ALL". "0:05 0:15 0:30 1:00 2:00 3:00 4:00"))
+  (org-clock-persistence-insinuate)
+  (org-load-modules-maybe t))
+#+END_SRC
+
+Auto generate toc at the first header to contain a :TOC: tag.
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+
+(use-package toc-org
+  :after org
+  :hook (org-mode . toc-org-enable))
+#+END_SRC
+
+Better indenting
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-indent :after org :ensure nil :diminish)
+#+END_SRC
+** Agenda
+Crucial for staying organized
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-agenda
+  :ensure nil
+  :after org
+  :bind (:map org-agenda-mode-map
+        ("X" . my/org-agenda-mark-done-and-add-followup)
+        ("x" . my/org-agenda-done))
+  :preface
+  (defun my/org-compare-times (clocked estimated)
+    "Gets the ratio between the timed time and the estimated time."
+    (if (and (> (length clocked) 0) estimated)
+        (format "%.2f"
+                (/ (* 1.0 (org-hh:mm-string-to-minutes clocked))
+                   (org-hh:mm-string-to-minutes estimated)))
+      ""))
+
+  (defun my/org-agenda-done (&optional arg)
+    "Mark current TODO as done.
+  This changes the line at point, all other lines in the agenda referring to
+  the same tree node, and the headline of the tree node in the Org-mode file."
+    (interactive "P")
+    (org-agenda-todo "DONE"))
+
+  (defun my/org-agenda-mark-done-and-add-followup ()
+    "Mark the current TODO as done and add another task after it.
+   Creates it at the same level as the previous task, so it's better to use
+   this with to-do items than with projects or headings."
+    (interactive)
+    (org-agenda-todo "DONE")
+    (org-agenda-switch-to)
+    (org-capture 0 "t"))
+  :custom
+  (org-agenda-dim-blocked-tasks t)
+  (org-agenda-files '("~/.personal/agenda"))
+  (org-agenda-inhibit-startup t)
+  (org-agenda-show-log t)
+  (org-agenda-skip-deadline-if-done t)
+  (org-agenda-skip-deadline-prewarning-if-scheduled 'pre-scheduled)
+  (org-agenda-skip-scheduled-if-done t)
+  (org-agenda-span 2)
+  (org-agenda-start-on-weekday 6)
+  (org-agenda-sticky nil)
+  (org-agenda-tags-column -100)
+  (org-agenda-time-grid '((daily today require-timed)))
+  (org-agenda-use-tag-inheritance t)
+  (org-columns-default-format "%14SCHEDULED %Effort{:} %1PRIORITY %TODO %50ITEM %TAGS")
+  (org-default-notes-file "~/.personal/agenda/organizer.org")
+  (org-directory "~/.personal")
+  (org-enforce-todo-dependencies t)
+  (org-habit-graph-column 80)
+  (org-habit-show-habits-only-for-today nil)
+  (org-track-ordered-property-with-tag t))
+#+END_SRC
+** Bullets
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-bullets
+  :hook (org-mode . org-bullets-mode)
+  :custom (org-bullets-bullet-list '("●" "▲" "■" "✶" "◉" "○" "○")))
+#+END_SRC
+** Capture
+=org-capture= provides tempaltes that saves you time when adding entries.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-capture
+  :ensure nil
+  :after org
+  :preface
+  (defvar my/org-basic-task-template "* TODO %^{Task}
+:PROPERTIES:
+:Effort: %^{effort|1:00|0:05|0:15|0:30|2:00|4:00}
+:END:
+Captured %<%Y-%m-%d %H:%M>" "Template for basic task.")
+
+  (defvar my/org-contacts-template "* %(org-contacts-template-name)
+:PROPERTIES:
+:ADDRESS: %^{289 Cleveland St. Brooklyn, 11206 NY, USA}
+:BIRTHDAY: %^{yyyy-mm-dd}
+:EMAIL: %(org-contacts-template-email)
+:NOTE: %^{NOTE}
+:END:" "Template for org-contacts.")
+
+  :custom
+  (org-capture-templates
+   `(("B" "Book" checkitem (file+headline "~/.personal/other/books.org" "Books")
+      "- [ ] %^{Book}"
+      :immediate-finish t)
+
+     ("L" "Learning" checkitem (file+headline "~/.personal/other/learning.org" "Things")
+      "- [ ] %^{Thing}"
+      :immediate-finish t)
+
+     ("c" "Contact" entry (file+headline "~/.personal/agenda/contacts.org" "Friends"),
+      my/org-contacts-template
+      :empty-lines 1)
+
+     ("p" "People" entry (file+headline "~/.personal/agenda/people.org" "Tasks"),
+      my/org-basic-task-template
+      :empty-lines 1)
+
+     ("w" "Work" entry (file+headline "~/.personal/agenda/work.org" "Tasks"),
+      my/org-basic-task-template
+      :empty-lines 1)
+
+     ("t" "Task" entry (file+headline "~/.personal/agenda/organizer.org" "Tasks"),
+      my/org-basic-task-template))))
+#+END_SRC
+** Clock
+=org-clock= allows you to estimate and track your time.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-clock
+  :ensure nil
+  :after org
+  :preface
+  (defun my/org-mode-ask-effort ()
+    "Ask for an effort estimate when clocking in."
+    (unless (org-entry-get (point) "Effort")
+      (let ((effort
+             (completing-read
+              "Effort: "
+              (org-entry-get-multivalued-property (point) "Effort"))))
+        (unless (equal effort "")
+          (org-set-property "Effort" effort)))))
+  :hook (org-clock-in-prepare-hook . my/org-mode-ask-effort)
+  :custom
+  (org-clock-clocktable-default-properties
+   '(:block day :maxlevel 2 :scope agenda :link t :compact t :formula %
+            :step day :fileskip0 t :stepskip0 t :narrow 80
+            :properties ("Effort" "CLOCKSUM" "CLOCKSUM_T" "TODO")))
+  (org-clock-continuously nil)
+  (org-clock-in-switch-to-state "STARTED")
+  (org-clock-out-remove-zero-time-clocks t)
+  (org-clock-persist t)
+  (org-clock-persist-query-resume nil)
+  (org-clock-report-include-clocking-task t)
+  (org-show-notification-handler (lambda (msg) (alert msg))))
+#+END_SRC
+** Contacts
+Track your contacts in org-mode.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-contacts
+  :ensure nil
+  :after org
+  :custom (org-contacts-files '("~/.personal/agenda/contacts.org")))
+#+END_SRC
+** Customization
+Make tasks have fancy fonts and color based on type.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package org-faces
+  :ensure nil
+  :after org
+  :custom
+  (org-todo-keyword-faces
+   '(("DONE" . (:foreground "cyan" :weight bold))
+     ("SOMEDAY" . (:foreground "gray" :weight bold))
+     ("TODO" . (:foreground "green" :weight bold))
+     ("WAITING" . (:foreground "red" :weight bold)))))
+#+END_SRC
+** Languages
+Compile languages in =org-mode=.
+#+BEGIN_SRC emacs-lisp :tangle
+(use-package ob-emacs-lisp :ensure nil :after org)
+(use-package ob-makefile :ensure nil :after org)
+(use-package ob-org :ensure nil :after org)
+(use-package ob-python :ensure nil :after org)
+(use-package ob-shell :ensure nil :after org)
+(use-package ob-sql :ensure nil :after org)
+#+END_SRC
