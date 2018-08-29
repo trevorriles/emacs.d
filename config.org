@@ -124,7 +124,11 @@ I use evil mode because I am a fan of vim keybindings
   (evil-mode)
 
   ;; example key binding
-  (define-key evil-normal-state-map (kbd ", w") 'evil-window-vsplit))
+  (define-key evil-normal-state-map (kbd ", w") 'evil-window-vsplit)
+  (define-key evil-normal-state-map (kbd ", gs") 'magit-status)
+
+  ;; state overrides
+  (evil-set-initial-state 'dired-mode 'emacs))
 #+END_SRC
 * Languages
 ** YAML
@@ -135,7 +139,95 @@ I use evil mode because I am a fan of vim keybindings
 :interpreter ("yml" . yml-mode))
 
 #+END_SRC
+** Haskell
+
+I use =haskell-mode= and =dante=
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package haskell-mode
+:delight haskell-mode "λ"
+:mode "\\.hs\\'"
+:interpreter ("hs" . haskell-mode))
+#+END_SRC
+
+Dante mode provides some extra features
+
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package dante
+:ensure t
+:after haskell-mode
+:init
+(add-hook 'haskell-mode-hook 'dante-mode)
+(add-hook 'haskell-mode-hook 'flycheck-mode)
+:config
+(evil-define-key 'normal haskell-mode-map (kbd ", .") 'xref-find-definitions))
+
+#+END_SRC
 * Advanced Configuration
+** Email
+I use notmuch and mbsync to get my email.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package notmuch
+:ensure nil
+:ensure-system-package (notmuch mbsync)
+:config
+(define-key notmuch-search-mode-map "d"
+  (lambda ()
+    "toggle deleted tag for thread"
+    (interactive)
+    (if (member "deleted" (notmuch-search-get-tags))
+        (notmuch-search-tag '("-deleted"))
+      (notmuch-search-tag '("+deleted" "-inbox" "-unread")))))
+(define-key notmuch-show-mode-map "d"
+  (lambda ()
+    "toggle deleted tag for message"
+    (interactive)
+    (if (member "deleted" (notmuch-show-get-tags))
+        (notmuch-show-tag '("-deleted"))
+      (notmuch-show-tag '("+deleted" "-inbox" "-unread")))))
+(define-key notmuch-search-mode-map "a"
+  (lambda ()
+    "toggle archive"
+    (interactive)
+    (if (member "archive" (notmuch-search-get-tags))
+        (notmuch-search-tag '("-archive"))
+      (notmuch-search-tag '("+archive" "-inbox" "-unread")))))
+(define-key notmuch-show-mode-map "a"
+  (lambda ()
+    "toggle archive"
+    (interactive)
+    (if (member "archive" (notmuch-show-get-tags))
+        (notmuch-show-tag '("-archive"))
+      (notmuch-show-tag '("+archive" "-inbox" "-unread")))))
+(define-key notmuch-hello-mode-map "a"
+  (lambda ()
+    (interactive)
+    (notmuch-hello-search "tag:archive")))
+:custom
+(notmuch-search-oldest-first nil)
+(message-sendmail-envelope-from 'header)
+(mail-specify-envelope-from 'header)
+(mail-envelope-from 'header)
+(notmuch-show-all-multipart/alternative-parts nil)
+(message-send-mail-function 'message-send-mail-with-sendmail)
+(sendmail-program "msmtp")
+(message-sendmail-f-is-evil nil)
+(mail-interactive t)
+(user-full-name "Trevor Riles")
+(user-mail-address "tjriles@spscommerce.com")
+(message-kill-buffer-on-exit t)
+(mail-user-agent 'message-user-agent)
+(notmuch-always-prompt-for-sender t)
+(notmuch-fcc-dirs '((".*" . "/sent")))
+(notmuch-show-indent-messages-width 4)
+(notmuch-saved-searches '((:name "inbox" :query "tag:inbox" :key "i")
+                          (:name "tome" :query "tag:inbox and tag:to-me" :key "m")
+                          (:name "cloudeng" :query "tag:inbox and tag:cloudeng" :key "c")
+                          (:name "aws" :query "tag:aws" :key "a" :sort-order newest-first)))
+(notmuch-archive-tags   '("-inbox" "-unread" "+archive"))
+(notmuch-show-all-tag-list t)
+(message-kill-buffer-on-exit t))
+#+END_SRC
 ** Auto-Completion
 =company= provides auto-completion at point and displays a small pop-in containing the candidates.
 
@@ -194,6 +286,64 @@ Make finding buffers easy.
       (ibuffer-do-sort-by-alphabetic)))
   :hook (ibuffer . my/ibuffer-projectile))
 #+END_SRC
+** Calendar
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package calendar
+  :custom (calendar-mark-holidays-flag t))
+
+(use-package holidays
+  :ensure nil
+  :custom
+  (holiday-bahai-holidays nil)
+  (holiday-christian-holidays
+   '((holiday-fixed 1 6 "Epiphany")
+     (holiday-fixed 2 2 "Candlemas")
+     (holiday-easter-etc -47 "Mardi Gras")
+     (holiday-easter-etc 0 "Easter Day")
+     (holiday-easter-etc 1 "Easter Monday")
+     (holiday-easter-etc 39 "Ascension")
+     (holiday-easter-etc 49 "Pentecost")
+     (holiday-fixed 8 15 "Assumption")
+     (holiday-fixed 11 1 "All Saints' Day")
+     (holiday-fixed 11 2 "Day of the Dead")
+     (holiday-fixed 11 22 "Saint Cecilia's Day")
+     (holiday-fixed 12 1 "Saint Eloi's Day")
+     (holiday-fixed 12 4 "Saint Barbara")
+     (holiday-fixed 12 6 "Saint Nicholas Day")
+     (holiday-fixed 12 25 "Christmas Day")))
+  (holiday-general-holidays
+   '((holiday-fixed 1 1 "New Year's Day")
+     (holiday-fixed 2 14 "Valentine's Day")
+     (holiday-fixed 3 8 "International Women's Day")
+     (holiday-fixed 10 31 "Halloween")
+     (holiday-fixed 11 11 "Armistice of 1918")))
+  (holiday-hebrew-holidays nil)
+  (holiday-islamic-holidays nil)
+  (holiday-local-holidays
+   '((holiday-fixed 5 1 "Labor Day")
+     (holiday-float 3 0 0 "Grandmothers' Day")
+     (holiday-float 4 4 3 "Secretary's Day")
+     (holiday-float 5 0 2 "Mother's Day")
+     (holiday-float 6 0 3 "Father's Day")))
+  (holiday-oriental-holidays nil))
+#+END_SRC
+** Dashboard
+Dashboards are nice
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package dashboard
+  :preface
+  (defun my/dashboard-banner ()
+    "Set a dashboard banner including information on package initialization
+     time and garbage collections."
+    (setq dashboard-banner-logo-title
+          (format "Emacs ready in %.2f seconds with %d garbage collections."
+                  (float-time (time-subtract after-init-time before-init-time)) gcs-done)))
+  :init
+  (add-hook 'after-init-hook 'dashboard-refresh-buffer)
+  (add-hook 'dashboard-mode-hook 'my/dashboard-banner)
+  :custom (dashboard-startup-banner 'logo)
+  :config (dashboard-setup-startup-hook))
+#+END_SRC
 ** Windows
 *** =switch-window=
 Antoher option is =ace-window=.
@@ -217,15 +367,15 @@ Allows moving windows
 Make finding files easier.
 #+BEGIN_SRC emacs-lisp :tangle yes
 (use-package dired
-  :ensure nil
-  :delight dired-mode "Dired"
-  :custom
-  (dired-auto-rever-buffer t)
-  (dired-dwim-target t)
-  (dired-hide-details-hide-symlink-targets nil)
-  (dired-listing-switches "-alh")
-  (dired-ls-F-marks-symlinks nil)
-  (dired-recursive-copies 'always))
+:ensure nil
+:delight dired-mode "Dired"
+:custom
+(dired-auto-rever-buffer t)
+(dired-dwim-target t)
+(dired-hide-details-hide-symlink-targets nil)
+(dired-listing-switches "-alh")
+(dired-ls-F-marks-symlinks nil)
+(dired-recursive-copies 'always))
 
 (use-package dired-x
   :ensure nil
@@ -381,7 +531,7 @@ Helps find keyboard shortcuts
   :custom
   (ivy-virtual-abbreviate 'full
                           ivy-rich-switch-buffer-align-virtual-buffer t
-                          ivy-rich-path-style 'bbrev)
+                          ivy-rich-path-style 'abbrev)
   :config
   (ivy-set-display-transformer 'ivy-switch-buffer
                                'ivy-rich-switch-buffer-transformer))
@@ -390,6 +540,22 @@ Helps find keyboard shortcuts
   :bind (("C-s" . swiper)
          ("C-r" . swiper)))
 
+#+END_SRC
+** Linters
+Flycheck lints warnings and errors directly within buffers.
+#+BEGIN_SRC emacs-lisp :tangle yes
+(use-package flycheck
+  :defer 2
+  :diminish
+  :init (global-flycheck-mode)
+  :custom
+  (flycheck-display-errors-delay .3)
+  (flycheck-pylintrc "~/.pylintrc")
+  (flycheck-python-pylint-executable "~/.nix-profile/bin/pylint")
+  (flycheck-stylelintrc "~/.stylelintrc.json")
+  :config
+  (flycheck-add-mode 'javascript-eslint 'web-mode)
+  (flycheck-add-mode 'typescript-tslint 'web-mode))
 #+END_SRC
 ** Parenthesis
 *** =rainbow-delimiters=
@@ -528,7 +694,6 @@ Group Org commands
   ^^                _c_ capture
   ^^                _d_ decrypt
   ^^                _i_ insert-link
-  ^^                _j_ jump-task
   ^^                _k_ cut-subtree
   ^^                _o_ open-link
   ^^                _r_ refile
@@ -543,7 +708,6 @@ Group Org commands
   ("d" org-decrypt-entry)
   ("k" org-cut-subtree)
   ("i" org-insert-link-global)
-  ("j" my/org-jump)
   ("o" org-open-at-point-global)
   ("r" org-refile)
   ("s" org-store-link)
@@ -666,6 +830,10 @@ Org mode allows me to track time, take notes, and much much more.
     (interactive)
     (let ((current-prefix-arg '(4)))
       (call-interactively 'org-refile)))
+  (defun my/org-use-speed-commands-for-headings-and-lists ()
+    "Activates speed commands on list items too."
+    (or (and (looking-at org-outline-regexp) (looking-back "^\**"))
+        (save-excursion (and (looking-at (org-item-re)) (looking-back "^[ \t]*")))))
   :hook ((after-save . my/config-tangle)
          (org-mode . org-indent-mode))
   :custom
